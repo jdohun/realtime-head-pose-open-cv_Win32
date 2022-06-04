@@ -22,10 +22,10 @@ using namespace std;
 Estimator::Estimator() {
 
 	// Load networks
-	try {
+	//try {
 		box_detector = cv::dnn::readNetFromCaffe(caffe_config_file, caffe_weight_file);
-	}
-	catch (cv::Exception& e) { const char* err_msg = e.what(); std::cout << "exception caught: " << err_msg << std::endl; }
+	//}
+	//catch (cv::Exception& e) { const char* err_msg = e.what(); std::cout << "exception caught: " << err_msg << std::endl; }
 	landmark_detector = dlib::shape_predictor();
 	dlib::deserialize(landmarks_model) >> landmark_detector;
 

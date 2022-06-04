@@ -38,7 +38,7 @@ public:
 	//const string caffe_config_file = "./deploy.prototxt";
 	//const string caffe_weight_file = "./res10_300x300_ssd_iter_140000_fp16.caffemodel";
 	const string caffe_config_file = "opencv_face_detector.pbtxt";
-	const string caffe_weight_file = "opencv_face_detector_unit8.pb";
+	const string caffe_weight_file = "opencv_face_detector_uint8.pb";
 
 	const string landmarks_model = "./shape_predictor_68_face_landmarks.dat";
 
