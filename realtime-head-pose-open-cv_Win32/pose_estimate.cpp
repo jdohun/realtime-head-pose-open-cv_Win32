@@ -16,6 +16,7 @@
 #include "dlib/opencv.h"
 #include "dlib/image_processing/frontal_face_detector.h"
 
+using namespace cv;
 using namespace std;
 
 
@@ -146,6 +147,22 @@ void Estimator::detect(TransformData& outFaces) {
 
 	// Solve for pose
 	cv::solvePnP(model_points, image_points, camera_matrix, dist_coeffs, rotation_vector, translation_vector);
+
+// 코에 선 그리기
+	// Project a 3D point (0, 0, 1000.0) onto the image plane.
+	// We use this to draw a line sticking out of the nose
+	vector<Point3d> nose_end_point3D;
+	vector<Point2d> nose_end_point2D;
+	nose_end_point3D.push_back(Point3d(0, 0, 1000.0));
+
+	projectPoints(nose_end_point3D, rotation_vector, translation_vector, camera_matrix, dist_coeffs, nose_end_point2D);
+
+	for (int i = 0; i < image_points.size(); i++) {
+		circle(frame, image_points[i], 3, Scalar(0, 0, 255), -1);
+	}
+
+	cv::line(frame, image_points[0], nose_end_point2D[0], cv::Scalar(255, 0, 0), 2);
+// 여기까지가 코 선 그리기
 
 	// Convert rotation to Matrix
 	cv::Rodrigues(rotation_vector, rot_mat);

@@ -18,13 +18,13 @@
     <ClCompile Include="dlib_source.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="webcam_face_pose_ex.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="export_wrapper.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="pose_estimate.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="video_test_shape.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
