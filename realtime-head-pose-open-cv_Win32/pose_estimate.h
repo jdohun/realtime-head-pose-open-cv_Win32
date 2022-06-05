@@ -42,8 +42,6 @@ public:
 
 	const string landmarks_model = "./shape_predictor_68_face_landmarks.dat";
 
-
-
 	// Face box data
 	int face_width;
 	int center_x;
@@ -82,5 +80,3 @@ public:
 	void getRawImageBytes(unsigned char* data, int width, int height);
 
 };
-
-

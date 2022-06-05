@@ -124,9 +124,9 @@ int main() {
         std::cout << "Unable to connect to camera" << std::endl;
         return EXIT_FAILURE;
     }
-
+   
     get_rabbit();
-
+    
     // 미리 변수 선언 : 기존에는 main loop 안에 있었음
     cv::Mat temp;
 
@@ -188,7 +188,7 @@ int main() {
 
     //text on screen
     std::ostringstream outtext;
-
+    
     // 원본 길이 저장
     cap >> temp;
     temp_width = temp.cols;
@@ -284,7 +284,7 @@ int main() {
             // 소수점 아래 첫번째 자리에서 반올림했다고 가정하여 +1
             facePosX = ((int)reprojectdst[0].x + (int)reprojectdst[1].x) / 2 + 1 - 70;
             facePosY = ((int)reprojectdst[0].y + (int)reprojectdst[0].y) / 2 + 1 - 60;
-
+            
             cv::putText(temp, "O", cv::Point(facePosX, facePosY), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
 
             // 스티커 붙이기 
@@ -334,7 +334,7 @@ int main() {
 
             image_pts.clear();
         }
-
+        
         //press esc to end
         cv::imshow("demo", temp);
         unsigned char key = cv::waitKey(1);

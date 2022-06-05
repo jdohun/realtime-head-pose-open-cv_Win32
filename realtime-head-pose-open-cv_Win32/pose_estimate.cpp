@@ -148,6 +148,7 @@ void Estimator::detect(TransformData& outFaces) {
 	// Solve for pose
 	cv::solvePnP(model_points, image_points, camera_matrix, dist_coeffs, rotation_vector, translation_vector);
 
+	/*
 // 코에 선 그리기
 	// Project a 3D point (0, 0, 1000.0) onto the image plane.
 	// We use this to draw a line sticking out of the nose
@@ -163,6 +164,7 @@ void Estimator::detect(TransformData& outFaces) {
 
 	cv::line(frame, image_points[0], nose_end_point2D[0], cv::Scalar(255, 0, 0), 2);
 // 여기까지가 코 선 그리기
+	*/
 
 	// Convert rotation to Matrix
 	cv::Rodrigues(rotation_vector, rot_mat);
