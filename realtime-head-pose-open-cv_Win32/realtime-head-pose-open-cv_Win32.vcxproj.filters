@@ -24,7 +24,7 @@
     <ClCompile Include="pose_estimate.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Headpose.cpp">
+    <ClCompile Include="video_test_shape.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

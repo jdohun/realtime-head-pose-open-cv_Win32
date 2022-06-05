@@ -1,5 +1,6 @@
 // https://github.com/lincolnhard/head-pose-estimation/blob/master/video_test_shape.cpp
 
+#pragma once
 #include <iostream>
 #include <dlib/opencv.h>
 #include <opencv2/highgui/highgui.hpp>
@@ -10,13 +11,17 @@
 #include <dlib/image_processing.h>
 #include "pose_estimate.h"
 
-// #include <string> // 사각형 좌표 찾을 때 사용 했음
+// #include <string> // 사각형 좌표 찾을 때 사용 했음 : 작성자 - 정도훈
+
+#define ON 1
+#define OFF 0
 
 //Intrisics can be calculated using opencv sample code under opencv/sources/samples/cpp/tutorial_code/calib3d
 //Normally, you can also apprximate fx and fy by image width, cx by half image width, cy by half image height instead
 double K[9] = { 6.5308391993466671e+002, 0.0, 3.1950000000000000e+002, 0.0, 6.5308391993466671e+002, 2.3950000000000000e+002, 0.0, 0.0, 1.0 };
 double D[5] = { 7.0834633684407095e-002, 6.9140193737175351e-002, 0.0, 0.0, -1.3073460323689292e+000 };
 
+// 개발자 - 정도훈
 // 스티커 붙이기에 사용할 변수들
 // 스티커 원본, 마스크, 관심영역
 cv::Mat img;
@@ -26,6 +31,9 @@ cv::Mat rect;
 // 스티커 원본 길이
 int img_width;
 int img_height;
+
+int sticker_start_X;
+int sticker_start_Y;
 
 // 마스크 resize 길이
 int resized_width;
@@ -46,13 +54,29 @@ int temp_height;
 int facePosX;
 int facePosY;
 
-// 영역 이탈을 확인하기 위한 길이
+// 영역 이탈을 확인하기 위한 길이 정보
 int check_W;
 int check_H;
 
-void get_rabbit() {
-    img = cv::imread("rabbit.png");
-    mask = cv::imread("rabbit_mask.jpg", cv::IMREAD_GRAYSCALE);
+int sticker_rabbit = OFF;
+
+void get_rabbit() { // 개발자 - 정도훈
+    sticker_rabbit = ON;
+
+    img = cv::imread("./sticker/rabbit.png");
+    mask = cv::imread("./sticker/rabbit_mask.jpg", cv::IMREAD_GRAYSCALE);
+
+    if (img.empty()) {
+        cerr << "rabbit load failed!" << endl;
+        exit(0);
+    }
+    if (mask.empty()) {
+        cerr << "rabbit_mask load failed!" << endl;
+        exit(0);
+    }
+
+    sticker_start_X = 60;
+    sticker_start_Y = 60;
 
     img_width = img.cols;
     img_height = img.rows;
@@ -61,7 +85,7 @@ void get_rabbit() {
     resized_height = img_height;
 }
 
-void sticker_rabbit_ON(cv::Mat src, int facePosX, int facePosY) {
+void modulate_roi(cv::Mat src, int facePosX, int facePosY) {   // 개발자 - 정도훈
     check_W = facePosX + resized_height;
     check_H = facePosY + resized_width;
 
@@ -95,12 +119,9 @@ void sticker_rabbit_ON(cv::Mat src, int facePosX, int facePosY) {
         }       // 원본 길이로도 범위를 벗어나지 않을 때
         else if (img_width != resized_width) { // resize를 했으면
             // 이미지 다시 읽음 : 화질을 유지하기 위해
-            img = cv::imread("rabbit.png");
-            mask = cv::imread("rabbit_mask.jpg", cv::IMREAD_GRAYSCALE);
-
-            // 원본 길이로 설정
-            resized_width = img_width;
-            resized_height = img_height;
+            if (sticker_rabbit) {
+                get_rabbit();
+            }
         }
     }
 
@@ -111,9 +132,11 @@ void sticker_rabbit_ON(cv::Mat src, int facePosX, int facePosY) {
     cv::resize(img, img, cv::Size(resized_width, resized_height));
     cv::resize(mask, mask, cv::Size(resized_width, resized_height));
 
-    cv::imshow("rect", rect);
     // 3. 관심 영역에 이미지 복사
     img.copyTo(rect, mask);
+
+    // 확인용
+    cv::imshow("rect", rect);
     cv::imshow("img", img);
 }
 
@@ -255,12 +278,12 @@ int main() {
 
             /*
             *  사각형 좌표 검색
+            */
             std::string number;
             for (int i = 0; i < reprojectdst.size(); ++i) {
                 number = (std::to_string(i));
                 cv::putText(temp, number, reprojectdst[i], cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
             }
-            */
 
             //calc euler angle
             cv::Rodrigues(rotation_vec, rotation_mat);
@@ -279,16 +302,16 @@ int main() {
             printf("casting(int) reprojectdst[0].x : %d\n", (int)reprojectdst[0].x);
             printf("casting(int) reprojectdst[0].y : %d\n\n", (int)reprojectdst[0].y);
 
+            cv::putText(temp, "O", cv::Point(facePosX, facePosY), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
+
             // 0. 관심영역 사이즈가 전체 사이즈를 벗어나지 않게 조정
             // reprojectdst[0] 과 reprojectdst[1]의 중간지점 사용
             // 소수점 아래 첫번째 자리에서 반올림했다고 가정하여 +1
-            facePosX = ((int)reprojectdst[0].x + (int)reprojectdst[1].x) / 2 + 1 - 70;
-            facePosY = ((int)reprojectdst[0].y + (int)reprojectdst[0].y) / 2 + 1 - 60;
-
-            cv::putText(temp, "O", cv::Point(facePosX, facePosY), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
+            facePosX = ((int)reprojectdst[0].x + (int)reprojectdst[1].x) / 2 + 1 - sticker_start_X;
+            facePosY = ((int)reprojectdst[0].y + (int)reprojectdst[0].y) / 2 + 1 - sticker_start_Y;
 
             // 스티커 붙이기 
-            sticker_rabbit_ON(temp, facePosX, facePosY);
+            modulate_roi(temp, facePosX, facePosY);
 
             if (posY > 10) { // 좌우 right
                 cv::putText(temp, "right", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));

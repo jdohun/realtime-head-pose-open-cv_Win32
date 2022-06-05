@@ -21,8 +21,8 @@
   <ItemGroup>
     <ClCompile Include="dlib_source.cpp" />
     <ClCompile Include="export_wrapper.cpp" />
-    <ClCompile Include="Headpose.cpp" />
     <ClCompile Include="pose_estimate.cpp" />
+    <ClCompile Include="video_test_shape.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pose_estimate.h" />

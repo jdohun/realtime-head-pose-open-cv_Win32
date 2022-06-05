@@ -54,6 +54,15 @@ void get_rabbit() {
     img = cv::imread("rabbit.png");
     mask = cv::imread("rabbit_mask.jpg", cv::IMREAD_GRAYSCALE);
 
+    if (img.empty()) {
+        cerr << "rabbit load failed!" << endl;
+        exit(0);
+    }
+    if (mask.empty()) {
+        cerr << "rabbit_mask load failed!" << endl;
+        exit(0);
+    }
+
     img_width = img.cols;
     img_height = img.rows;
 
