@@ -13,9 +13,6 @@
 
 // #include <string> // 사각형 좌표 찾을 때 사용 했음 : 작성자 - 정도훈
 
-#define ON 1
-#define OFF 0
-
 //Intrisics can be calculated using opencv sample code under opencv/sources/samples/cpp/tutorial_code/calib3d
 //Normally, you can also apprximate fx and fy by image width, cx by half image width, cy by half image height instead
 double K[9] = { 6.5308391993466671e+002, 0.0, 3.1950000000000000e+002, 0.0, 6.5308391993466671e+002, 2.3950000000000000e+002, 0.0, 0.0, 1.0 };
@@ -27,6 +24,8 @@ double D[5] = { 7.0834633684407095e-002, 6.9140193737175351e-002, 0.0, 0.0, -1.3
 cv::Mat img;
 cv::Mat mask;
 cv::Mat rect;
+
+cv::Mat mosaic_temp;
 
 // 스티커 원본 길이
 int img_width;
@@ -49,96 +48,32 @@ int temp_width;
 int temp_height;
 
 // 얼굴 시작 지점의 좌표
-// reprojectdst[0],[1]의 x,y 값을 (int)로 캐스팅하여 담아놓기 위한 변수
-// : 캐스팅하지 않으면 엉뚱한 값이 나옴
-int facePosX;
-int facePosY;
+cv::Point2d faceStart, faceEnd;
 
 // 영역 이탈을 확인하기 위한 길이 정보
 int check_W;
 int check_H;
 
-int sticker_rabbit = OFF;
+// filter 적용을 위한 ON OFF 변수들
+int sticker_bear = 0;
+int mosaic_OnNOff = 0;
 
-void get_rabbit() { // 개발자 - 정도훈
-    sticker_rabbit = ON;
+// filter 적용 함수
+void trackbar_sticking_bear(int pos, void* userdata);
+void trackbar_mosaicing(int pos, void* userdata);
 
-    img = cv::imread("./sticker/rabbit.png");
-    mask = cv::imread("./sticker/rabbit_mask.jpg", cv::IMREAD_GRAYSCALE);
+void get_mosaic_Roi(cv::Point faceStart, cv::Point faceEnd);
 
-    if (img.empty()) {
-        cerr << "rabbit load failed!" << endl;
-        exit(0);
-    }
-    if (mask.empty()) {
-        cerr << "rabbit_mask load failed!" << endl;
-        exit(0);
-    }
+// 스티커 영역 이탈 확인용
+void check_point_out(cv::Point faceStart, cv::Point faceEnd); // 개발자 - 정도훈
+void modulate_ratio(cv::Point faceStart, cv::Point faceEnd);
+void get_sticker_RoI(cv::Mat src);
+void sticker_resizing();
 
-    sticker_start_X = 60;
-    sticker_start_Y = 60;
+void get_bear();  // 개발자 - 정도훈
+//void modulate_roi(cv::Mat src, cv::Point faceStart, cv::Point faceEnd);   // 개발자 - 정도훈
+//void modulate_roi(cv::Mat src, int facePosX, int facePosY);   // 개발자 - 정도훈
 
-    img_width = img.cols;
-    img_height = img.rows;
-
-    resized_width = img_width;
-    resized_height = img_height;
-}
-
-void modulate_roi(cv::Mat src, int facePosX, int facePosY) {   // 개발자 - 정도훈
-    check_W = facePosX + resized_height;
-    check_H = facePosY + resized_width;
-
-    if (check_W >= temp_width || check_H >= temp_height) { // width or height가 범위를 벗어날 때
-        // 더 작은 길이로 사이즈 조절
-        if (check_W < check_H) {
-            // width를 조절하고 1:1 비율을 유지
-            resized_width = temp_width - facePosX - 1;
-            resized_height = resized_width;
-        }
-        else {
-            // height를 조절하고 1:1 비율을 유지
-            resized_height = temp_height - facePosY - 1;
-            resized_width = resized_height;
-        }
-    }
-    else { // 벗어나지 않을 때
-        // 원본 길이로 다시 비교
-        check_W = facePosX + img_width;
-        check_H = facePosY + img_height;
-
-        if (check_W >= temp_width || check_H >= temp_height) {
-            if (check_W < check_H) {
-                resized_width = temp_width - facePosX - 1;
-                resized_height = resized_width;
-            }
-            else {
-                resized_height = temp_height - facePosY - 1;
-                resized_width = resized_height;
-            }
-        }       // 원본 길이로도 범위를 벗어나지 않을 때
-        else if (img_width != resized_width) { // resize를 했으면
-            // 이미지 다시 읽음 : 화질을 유지하기 위해
-            if (sticker_rabbit) {
-                get_rabbit();
-            }
-        }
-    }
-
-    // 1. 관심영역 추출
-    rect = src(cv::Rect(facePosX, facePosY, resized_width, resized_height));
-
-    // 2. 관심 영역에 맞는 사이즈로 마스크 사이즈 변경
-    cv::resize(img, img, cv::Size(resized_width, resized_height));
-    cv::resize(mask, mask, cv::Size(resized_width, resized_height));
-
-    // 3. 관심 영역에 이미지 복사
-    img.copyTo(rect, mask);
-
-    // 확인용
-    cv::imshow("rect", rect);
-    cv::imshow("img", img);
-}
 
 int main() {
     //open cam
@@ -148,10 +83,13 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    get_rabbit();
-
     // 미리 변수 선언 : 기존에는 main loop 안에 있었음
     cv::Mat temp;
+
+    // filter를 적용시킬 트랙바 전용 창 생성
+    cv::namedWindow("filters");
+    cv::createTrackbar("bear", "filters", 0, 1, trackbar_sticking_bear, (void*)0);
+    cv::createTrackbar("mosaic", "filters", 0, 1, trackbar_mosaicing, (void*)0);
 
     //Load face detection and pose estimation models (dlib).
     dlib::frontal_face_detector detector = dlib::get_frontal_face_detector();
@@ -294,6 +232,7 @@ int main() {
             posY = euler_angle.at<double>(1); // 좌우, yaw
             posZ = euler_angle.at<double>(2); // 기울기, roll
 
+            /*
             cout << "reprojectdst[0] : " << reprojectdst[0] << endl;
             cout << "reprojectdst[0].x : " << reprojectdst[0].x << endl;
             cout << "reprojectdst[0].y : " << reprojectdst[0].y << endl << endl;;
@@ -301,17 +240,54 @@ int main() {
             printf("f reprojectdst[0].y : %f\n\n", reprojectdst[0].y);
             printf("casting(int) reprojectdst[0].x : %d\n", (int)reprojectdst[0].x);
             printf("casting(int) reprojectdst[0].y : %d\n\n", (int)reprojectdst[0].y);
+            */
 
-            cv::putText(temp, "O", cv::Point(facePosX, facePosY), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
 
             // 0. 관심영역 사이즈가 전체 사이즈를 벗어나지 않게 조정
             // reprojectdst[0] 과 reprojectdst[1]의 중간지점 사용
             // 소수점 아래 첫번째 자리에서 반올림했다고 가정하여 +1
-            facePosX = ((int)reprojectdst[0].x + (int)reprojectdst[1].x) / 2 + 1 - sticker_start_X;
-            facePosY = ((int)reprojectdst[0].y + (int)reprojectdst[0].y) / 2 + 1 - sticker_start_Y;
+            // sticker가 얼굴에 맞도록 좌상단 모서리를 이동시킴
+            faceStart.x = ((int)reprojectdst[0].x + (int)reprojectdst[1].x) / 2 + 1 - sticker_start_X;
+            faceStart.y = ((int)reprojectdst[0].y + (int)reprojectdst[0].y) / 2 + 1 - sticker_start_Y;
+            faceEnd.x = ((int)reprojectdst[6].x + (int)reprojectdst[7].x) / 2;
+            faceEnd.y = ((int)reprojectdst[6].y + (int)reprojectdst[7].y) / 2;
 
-            // 스티커 붙이기 
-            modulate_roi(temp, facePosX, facePosY);
+            cout << "faceStart : " << faceStart << endl;
+            cout << "faceStart.x : " << faceStart.x << endl;
+            cout << "faceStart.y : " << faceStart.y << endl << endl;;
+            cout << "faceEnd : " << faceEnd << endl;
+            cout << "faceEnd.x : " << faceEnd.x << endl;
+            cout << "faceEnd.y : " << faceEnd.y << endl << endl;;
+
+            //cv::putText(temp, "S", cv::Point(facePosX, facePosY), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
+            cv::putText(temp, "S", faceStart, cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 255, 0));
+            cv::putText(temp, "E", faceEnd, cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 255, 0));
+
+
+            // 트랙바 적용
+            if (sticker_bear) {
+                // 스티커 붙이기 
+                //modulate_roi(temp, faceStart, faceEnd);
+                /*
+                */
+                get_bear();
+                check_point_out(faceStart, faceEnd);
+                modulate_ratio(faceStart, faceEnd);
+                get_sticker_RoI(temp);
+                sticker_resizing();
+                //cv::putText(temp, "E2", faceEnd, cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 255, 0));
+                printf("sticker_bear\n");
+            }
+            if (mosaic_OnNOff) {
+                printf("mosaic_OnNOff\n");
+                check_point_out(faceStart, faceEnd);
+                modulate_ratio(faceStart, faceEnd);
+                get_sticker_RoI(temp);
+
+                cv::resize(rect, mosaic_temp, cv::Size(rect.rows / 8, rect.cols / 8));
+                cv::resize(mosaic_temp, rect, cv::Size(rect.rows, rect.cols));
+            }
+
 
             if (posY > 10) { // 좌우 right
                 cv::putText(temp, "right", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
@@ -368,3 +344,154 @@ int main() {
 
     return 0;
 }
+
+void get_bear() { // 개발자 - 정도훈
+    img = cv::imread("./sticker/bear/bear_400.jpg");
+    mask = cv::imread("./sticker/bear/bear_mask_400.jpg", cv::IMREAD_GRAYSCALE);
+
+    if (img.empty()) {
+        cerr << "bear load failed!" << endl;
+        exit(0);
+    }
+    if (mask.empty()) {
+        cerr << "bear_mask load failed!" << endl;
+        exit(0);
+    }
+
+    sticker_start_X = 60;
+    sticker_start_Y = 60;
+
+    img_width = img.cols;
+    img_height = img.rows;
+
+    /*
+    resized_width = img_width;
+    resized_height = img_height;
+    */
+}
+
+void trackbar_sticking_bear(int pos, void* userdata) {
+    sticker_bear = pos;
+    cv::setTrackbarPos("mosaic", "filters", 0);
+
+
+}
+
+void trackbar_mosaicing(int pos, void* userdata) {
+    mosaic_OnNOff = pos;
+    cv::setTrackbarPos("bear", "filters", 0);
+}
+
+void get_mosaic_Roi(cv::Point faceStart, cv::Point faceEnd) {
+}
+
+// roi를 만들 좌표가 영상 밖으로 벗어나면 안으로 이동시킴
+void check_point_out(cv::Point faceStart, cv::Point faceEnd) {
+    if (faceStart.x <= 0) {
+        faceStart.x = 1;
+    }
+    if (faceStart.y <= 0) {
+        faceStart.y = 1;
+    }
+    if (faceEnd.x >= temp_width){
+        faceEnd.x = temp_width - 1;
+    }
+    if (faceEnd.y >= temp_height) {
+        faceEnd.y = temp_height - 1;
+    }
+}
+
+// roi의 width, height 비율을 1:1로 맞춤
+void modulate_ratio(cv::Point faceStart, cv::Point faceEnd) {
+    // 더 작은 길이를 roi 길이로 정함
+    if (faceEnd.x < faceEnd.y) {
+        resized_width = faceEnd.x - faceStart.x;
+        resized_height = resized_width;
+    }
+    else {
+        resized_height = faceEnd.y - faceStart.y;
+        resized_width = resized_height;
+    }
+
+    printf("resized length : %d\n", resized_width);
+    printf("resized length : %d\n", resized_height);
+}
+
+void get_sticker_RoI(cv::Mat src) {
+    // 1. 관심영역 추출
+    rect = src(cv::Rect(faceStart.x, faceStart.y, resized_width, resized_height));
+
+    cv::rectangle(src, cv::Rect(faceStart.x, faceStart.y, resized_width, resized_height), cv::Scalar(0, 255, 0), 1);
+}
+
+void sticker_resizing() {
+    // 2. 관심 영역에 맞는 사이즈로 마스크 사이즈 변경
+    cv::resize(img, img, cv::Size(resized_width, resized_height));
+    cv::resize(mask, mask, cv::Size(resized_width, resized_height));
+
+    // 3. 관심 영역에 이미지 복사
+    img.copyTo(rect, mask);
+
+    // 확인용
+    cv::imshow("rect", rect);
+    cv::imshow("img", img);
+}
+
+/*
+void modulate_roi(cv::Mat src, int facePosX, int facePosY) {   // 개발자 - 정도훈
+    check_W = facePosX + resized_height;
+    check_H = facePosY + resized_width;
+
+    if (check_W >= temp_width || check_H >= temp_height) { // width or height가 범위를 벗어날 때
+        // 더 작은 길이로 사이즈 조절
+        if (check_W < check_H) {
+            // width를 조절하고 1:1 비율을 유지
+            resized_width = temp_width - facePosX - 1;
+            resized_height = resized_width;
+        }
+        else {
+            // height를 조절하고 1:1 비율을 유지
+            resized_height = temp_height - facePosY - 1;
+            resized_width = resized_height;
+        }
+    }
+    else { // 벗어나지 않을 때
+        // 원본 길이로 다시 비교
+        check_W = facePosX + img_width;
+        check_H = facePosY + img_height;
+
+        if (check_W >= temp_width || check_H >= temp_height) {
+            if (check_W < check_H) {
+                resized_width = temp_width - facePosX - 1;
+                resized_height = resized_width;
+            }
+            else {
+                resized_height = temp_height - facePosY - 1;
+                resized_width = resized_height;
+            }
+        }       // 원본 길이로도 범위를 벗어나지 않을 때
+        else if (img_width != resized_width) { // resize를 했으면
+            // 이미지 다시 읽음 : 화질을 유지하기 위해
+            if (sticker_bear) {
+                get_bear();
+            }
+        }
+    }
+
+    // 1. 관심영역 추출
+    rect = src(cv::Rect(facePosX, facePosY, resized_width, resized_height));
+
+    cv::rectangle(src, cv::Rect(facePosX, facePosY, resized_width, resized_height), cv::Scalar(0, 255, 0), 1);
+
+    // 2. 관심 영역에 맞는 사이즈로 마스크 사이즈 변경
+    cv::resize(img, img, cv::Size(resized_width, resized_height));
+    cv::resize(mask, mask, cv::Size(resized_width, resized_height));
+
+    // 3. 관심 영역에 이미지 복사
+    img.copyTo(rect, mask);
+
+    // 확인용
+    cv::imshow("rect", rect);
+    cv::imshow("img", img);
+}
+*/
