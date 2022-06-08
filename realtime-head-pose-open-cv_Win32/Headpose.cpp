@@ -1,4 +1,4 @@
-// https://github.com/lincolnhard/head-pose-estimation/blob/master/video_test_shape.cpp
+ï»¿// https://github.com/lincolnhard/head-pose-estimation/blob/master/video_test_shape.cpp
 
 #pragma once
 #include <iostream>
@@ -11,136 +11,78 @@
 #include <dlib/image_processing.h>
 #include "pose_estimate.h"
 
-// #include <string> // »ç°¢Çü ÁÂÇ¥ Ã£À» ¶§ »ç¿ë ÇßÀ½ : ÀÛ¼ºÀÚ - Á¤µµÈÆ
-
-#define ON 1
-#define OFF 0
+#define FaceCENTER  1
+#define FaceRIGHT   2
+#define FaceLEFT    3
+#define FaceUP      2
+#define FaceDOWN    3
 
 //Intrisics can be calculated using opencv sample code under opencv/sources/samples/cpp/tutorial_code/calib3d
 //Normally, you can also apprximate fx and fy by image width, cx by half image width, cy by half image height instead
 double K[9] = { 6.5308391993466671e+002, 0.0, 3.1950000000000000e+002, 0.0, 6.5308391993466671e+002, 2.3950000000000000e+002, 0.0, 0.0, 1.0 };
 double D[5] = { 7.0834633684407095e-002, 6.9140193737175351e-002, 0.0, 0.0, -1.3073460323689292e+000 };
 
-// °³¹ßÀÚ - Á¤µµÈÆ
-// ½ºÆ¼Ä¿ ºÙÀÌ±â¿¡ »ç¿ëÇÒ º¯¼öµé
-// ½ºÆ¼Ä¿ ¿øº», ¸¶½ºÅ©, °ü½É¿µ¿ª
+// ê°œë°œì - ì •ë„í›ˆ
+// ìŠ¤í‹°ì»¤ ë¶™ì´ê¸°ì— ì‚¬ìš©í•  ë³€ìˆ˜ë“¤
+// ìŠ¤í‹°ì»¤ ì›ë³¸, ë§ˆìŠ¤í¬, ê´€ì‹¬ì˜ì—­
 cv::Mat img;
 cv::Mat mask;
 cv::Mat rect;
 
-// ½ºÆ¼Ä¿ ¿øº» ±æÀÌ
+cv::Mat mosaic_temp;
+
+// ìŠ¤í‹°ì»¤ ì›ë³¸ ê¸¸ì´
 int img_width;
 int img_height;
 
 int sticker_start_X;
 int sticker_start_Y;
 
-// ¸¶½ºÅ© resize ±æÀÌ
+// ë§ˆìŠ¤í¬ resize ê¸¸ì´
 int resized_width;
 int resized_height;
 
-// ¾ó±¼ °¢µµ
+// ì–¼êµ´ ê°ë„
 double posX;
 double posY;
 double posZ;
 
-// Ä«¸Ş¶ó Ã¢ ±æÀÌ
+// ì¹´ë©”ë¼ ì°½ ê¸¸ì´
 int temp_width;
 int temp_height;
 
-// ¾ó±¼ ½ÃÀÛ ÁöÁ¡ÀÇ ÁÂÇ¥
-// reprojectdst[0],[1]ÀÇ x,y °ªÀ» (int)·Î Ä³½ºÆÃÇÏ¿© ´ã¾Æ³õ±â À§ÇÑ º¯¼ö
-// : Ä³½ºÆÃÇÏÁö ¾ÊÀ¸¸é ¾û¶×ÇÑ °ªÀÌ ³ª¿È
-int facePosX;
-int facePosY;
+// ì–¼êµ´ ì‹œì‘ ì§€ì ì˜ ì¢Œí‘œ
+cv::Point2d faceStart, faceEnd;
 
-// ¿µ¿ª ÀÌÅ»À» È®ÀÎÇÏ±â À§ÇÑ ±æÀÌ Á¤º¸
+// ì˜ì—­ ì´íƒˆì„ í™•ì¸í•˜ê¸° ìœ„í•œ ê¸¸ì´ ì •ë³´
 int check_W;
 int check_H;
 
-int sticker_rabbit = OFF;
+// filter ì ìš©ì„ ìœ„í•œ ON OFF ë³€ìˆ˜ë“¤
+int sticker_bear = 0;
+int mosaic_OnNOff = 0;
 
-void get_rabbit() { // °³¹ßÀÚ - Á¤µµÈÆ
-    sticker_rabbit = ON;
+// mosaic_strength
+int mosaic_strength = 1;
 
-    img = cv::imread("./sticker/rabbit.png");
-    mask = cv::imread("./sticker/rabbit_mask.jpg", cv::IMREAD_GRAYSCALE);
+// filter ì ìš© í•¨ìˆ˜
+void trackbar_sticking_bear(int pos, void* userdata);
+void trackbar_mosaicing(int pos, void* userdata);
 
-    if (img.empty()) {
-        cerr << "rabbit load failed!" << endl;
-        exit(0);
-    }
-    if (mask.empty()) {
-        cerr << "rabbit_mask load failed!" << endl;
-        exit(0);
-    }
+void get_mosaic_Roi(cv::Point faceStart, cv::Point faceEnd);
 
-    sticker_start_X = 60;
-    sticker_start_Y = 60;
+// ìŠ¤í‹°ì»¤ ì˜ì—­ ì´íƒˆ í™•ì¸ìš©
+void check_point_out(cv::Point faceStart, cv::Point faceEnd); // ê°œë°œì - ì •ë„í›ˆ
+void modulate_ratio(cv::Point faceStart, cv::Point faceEnd);
+void get_sticker_RoI(cv::Mat src);
+void sticker_resizing();
 
-    img_width = img.cols;
-    img_height = img.rows;
+void get_bear();  // ê°œë°œì - ì •ë„í›ˆ
+void get_bear_Right();
+void get_bear_Left();
+//void modulate_roi(cv::Mat src, cv::Point faceStart, cv::Point faceEnd);   // ê°œë°œì - ì •ë„í›ˆ
+//void modulate_roi(cv::Mat src, int facePosX, int facePosY);   // ê°œë°œì - ì •ë„í›ˆ
 
-    resized_width = img_width;
-    resized_height = img_height;
-}
-
-void modulate_roi(cv::Mat src, int facePosX, int facePosY) {   // °³¹ßÀÚ - Á¤µµÈÆ
-    check_W = facePosX + resized_height;
-    check_H = facePosY + resized_width;
-
-    if (check_W >= temp_width || check_H >= temp_height) { // width or height°¡ ¹üÀ§¸¦ ¹ş¾î³¯ ¶§
-        // ´õ ÀÛÀº ±æÀÌ·Î »çÀÌÁî Á¶Àı
-        if (check_W < check_H) {
-            // width¸¦ Á¶ÀıÇÏ°í 1:1 ºñÀ²À» À¯Áö
-            resized_width = temp_width - facePosX - 1;
-            resized_height = resized_width;
-        }
-        else {
-            // height¸¦ Á¶ÀıÇÏ°í 1:1 ºñÀ²À» À¯Áö
-            resized_height = temp_height - facePosY - 1;
-            resized_width = resized_height;
-        }
-    }
-    else { // ¹ş¾î³ªÁö ¾ÊÀ» ¶§
-        // ¿øº» ±æÀÌ·Î ´Ù½Ã ºñ±³
-        check_W = facePosX + img_width;
-        check_H = facePosY + img_height;
-
-        if (check_W >= temp_width || check_H >= temp_height) {
-            if (check_W < check_H) {
-                resized_width = temp_width - facePosX - 1;
-                resized_height = resized_width;
-            }
-            else {
-                resized_height = temp_height - facePosY - 1;
-                resized_width = resized_height;
-            }
-        }       // ¿øº» ±æÀÌ·Îµµ ¹üÀ§¸¦ ¹ş¾î³ªÁö ¾ÊÀ» ¶§
-        else if (img_width != resized_width) { // resize¸¦ ÇßÀ¸¸é
-            // ÀÌ¹ÌÁö ´Ù½Ã ÀĞÀ½ : È­ÁúÀ» À¯ÁöÇÏ±â À§ÇØ
-            if (sticker_rabbit) {
-                get_rabbit();
-            }
-        }
-    }
-
-    // 1. °ü½É¿µ¿ª ÃßÃâ
-    rect = src(cv::Rect(facePosX, facePosY, resized_width, resized_height));
-
-    cv::rectangle(src, cv::Rect(facePosX, facePosY, resized_width, resized_height), cv::Scalar(0, 255, 0), 1);
-
-    // 2. °ü½É ¿µ¿ª¿¡ ¸Â´Â »çÀÌÁî·Î ¸¶½ºÅ© »çÀÌÁî º¯°æ
-    cv::resize(img, img, cv::Size(resized_width, resized_height));
-    cv::resize(mask, mask, cv::Size(resized_width, resized_height));
-
-    // 3. °ü½É ¿µ¿ª¿¡ ÀÌ¹ÌÁö º¹»ç
-    img.copyTo(rect, mask);
-
-    // È®ÀÎ¿ë
-    cv::imshow("rect", rect);
-    cv::imshow("img", img);
-}
 
 int main() {
     //open cam
@@ -150,10 +92,13 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    get_rabbit();
-
-    // ¹Ì¸® º¯¼ö ¼±¾ğ : ±âÁ¸¿¡´Â main loop ¾È¿¡ ÀÖ¾úÀ½
+    // ë¯¸ë¦¬ ë³€ìˆ˜ ì„ ì–¸ : ê¸°ì¡´ì—ëŠ” main loop ì•ˆì— ìˆì—ˆìŒ
     cv::Mat temp;
+
+    // filterë¥¼ ì ìš©ì‹œí‚¬ íŠ¸ë™ë°” ì „ìš© ì°½ ìƒì„±
+    cv::namedWindow("filters");
+    cv::createTrackbar("bear", "filters", 0, 1, trackbar_sticking_bear, (void*)0);
+    cv::createTrackbar("mosaic", "filters", 0, 10, trackbar_mosaicing, (void*)0);
 
     //Load face detection and pose estimation models (dlib).
     dlib::frontal_face_detector detector = dlib::get_frontal_face_detector();
@@ -214,7 +159,7 @@ int main() {
     //text on screen
     std::ostringstream outtext;
 
-    // ¿øº» ±æÀÌ ÀúÀå
+    // ì›ë³¸ ê¸¸ì´ ì €ì¥
     cap >> temp;
     temp_width = temp.cols;
     temp_height = temp.rows;
@@ -234,12 +179,13 @@ int main() {
             dlib::full_object_detection shape = predictor(cimg, faces[0]);
 
             /*
-            * Á¡ Âï±â
+            * ì  ì°ê¸°
             //draw features
             for (unsigned int i = 0; i < 68; ++i) {
                 cv::circle(temp, cv::Point(shape.part(i).x(), shape.part(i).y()), 2, cv::Scalar(0, 0, 255), -1);
             }
             */
+
             //fill in 2D ref points, annotations follow https://ibug.doc.ic.ac.uk/resources/300-W/
             image_pts.push_back(cv::Point2d(shape.part(17).x(), shape.part(17).y())); //#17 left brow left corner
             image_pts.push_back(cv::Point2d(shape.part(21).x(), shape.part(21).y())); //#21 left brow right corner
@@ -279,7 +225,7 @@ int main() {
             */
 
             /*
-            *  »ç°¢Çü ÁÂÇ¥ °Ë»ö
+            *  ì‚¬ê°í˜• ì¢Œí‘œ ê²€ìƒ‰
             */
             std::string number;
             for (int i = 0; i < reprojectdst.size(); ++i) {
@@ -292,10 +238,11 @@ int main() {
             cv::hconcat(rotation_mat, translation_vec, pose_mat);
             cv::decomposeProjectionMatrix(pose_mat, out_intrinsics, out_rotation, out_translation, cv::noArray(), cv::noArray(), cv::noArray(), euler_angle);
 
-            posX = euler_angle.at<double>(0); // »óÇÏ, pitch
-            posY = euler_angle.at<double>(1); // ÁÂ¿ì, yaw
-            posZ = euler_angle.at<double>(2); // ±â¿ï±â, roll
+            posX = euler_angle.at<double>(0); // ìƒí•˜, pitch
+            posY = euler_angle.at<double>(1); // ì¢Œìš°, yaw
+            posZ = euler_angle.at<double>(2); // ê¸°ìš¸ê¸°, roll
 
+            /*
             cout << "reprojectdst[0] : " << reprojectdst[0] << endl;
             cout << "reprojectdst[0].x : " << reprojectdst[0].x << endl;
             cout << "reprojectdst[0].y : " << reprojectdst[0].y << endl << endl;;
@@ -303,39 +250,109 @@ int main() {
             printf("f reprojectdst[0].y : %f\n\n", reprojectdst[0].y);
             printf("casting(int) reprojectdst[0].x : %d\n", (int)reprojectdst[0].x);
             printf("casting(int) reprojectdst[0].y : %d\n\n", (int)reprojectdst[0].y);
+            */
 
-            cv::putText(temp, "O", cv::Point(facePosX, facePosY), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
 
-            // 0. °ü½É¿µ¿ª »çÀÌÁî°¡ ÀüÃ¼ »çÀÌÁî¸¦ ¹ş¾î³ªÁö ¾Ê°Ô Á¶Á¤
-            // reprojectdst[0] °ú reprojectdst[1]ÀÇ Áß°£ÁöÁ¡ »ç¿ë
-            // ¼Ò¼öÁ¡ ¾Æ·¡ Ã¹¹øÂ° ÀÚ¸®¿¡¼­ ¹İ¿Ã¸²Çß´Ù°í °¡Á¤ÇÏ¿© +1
-            facePosX = ((int)reprojectdst[0].x + (int)reprojectdst[1].x) / 2 + 1 - sticker_start_X;
-            facePosY = ((int)reprojectdst[0].y + (int)reprojectdst[0].y) / 2 + 1 - sticker_start_Y;
+            // 0. ê´€ì‹¬ì˜ì—­ ì‚¬ì´ì¦ˆê°€ ì „ì²´ ì‚¬ì´ì¦ˆë¥¼ ë²—ì–´ë‚˜ì§€ ì•Šê²Œ ì¡°ì •
+            // reprojectdst[0] ê³¼ reprojectdst[1]ì˜ ì¤‘ê°„ì§€ì  ì‚¬ìš©
+            // ì†Œìˆ˜ì  ì•„ë˜ ì²«ë²ˆì§¸ ìë¦¬ì—ì„œ ë°˜ì˜¬ë¦¼í–ˆë‹¤ê³  ê°€ì •í•˜ì—¬ +1
+            // stickerê°€ ì–¼êµ´ì— ë§ë„ë¡ ì¢Œìƒë‹¨ ëª¨ì„œë¦¬ë¥¼ ì´ë™ì‹œí‚´
+            faceStart.x = ((int)reprojectdst[0].x + (int)reprojectdst[1].x) / 2 + 1 - sticker_start_X;
+            faceStart.y = ((int)reprojectdst[0].y + (int)reprojectdst[0].y) / 2 + 1 - sticker_start_Y;
+            faceEnd.x = ((int)reprojectdst[6].x + (int)reprojectdst[7].x) / 2;
+            faceEnd.y = ((int)reprojectdst[6].y + (int)reprojectdst[7].y) / 2;
 
-            // ½ºÆ¼Ä¿ ºÙÀÌ±â 
-            //modulate_roi(temp, facePosX, facePosY);
+            cout << "faceStart : " << faceStart << endl;
+            cout << "faceStart.x : " << faceStart.x << endl;
+            cout << "faceStart.y : " << faceStart.y << endl << endl;;
+            cout << "faceEnd : " << faceEnd << endl;
+            cout << "faceEnd.x : " << faceEnd.x << endl;
+            cout << "faceEnd.y : " << faceEnd.y << endl << endl;;
 
-            if (posY > 10) { // ÁÂ¿ì right
+            //cv::putText(temp, "S", cv::Point(facePosX, facePosY), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
+            cv::putText(temp, "S", faceStart, cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 255, 0));
+            cv::putText(temp, "E", faceEnd, cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 255, 0));
+
+
+            // íŠ¸ë™ë°” ì ìš©
+            if (sticker_bear) {
+                // ìŠ¤í‹°ì»¤ ë¶™ì´ê¸° 
+                //modulate_roi(temp, faceStart, faceEnd);
+                /*
+                */
+                //ìƒí•˜ì¢Œìš° posXì™€ posYë¥¼ í™œìš©í•˜ì—¬ ì¡°ê±´ì— ë”°ë¼ ë‹¤ë¥¸ bearì˜ ëª¨ìŠµ ì¶œë ¥
+                if (posY > 10) { // ì¢Œìš° right
+                    get_bear_Right();
+                    check_point_out(faceStart, faceEnd);
+                    modulate_ratio(faceStart, faceEnd);
+                    get_sticker_RoI(temp);
+                    sticker_resizing();
+                    //cv::putText(temp, "right", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
+                }
+                else if (posY < -10) { // ì¢Œìš° left
+                    get_bear_Left();
+                    check_point_out(faceStart, faceEnd);
+                    modulate_ratio(faceStart, faceEnd);
+                    get_sticker_RoI(temp);
+                    sticker_resizing();
+                    //cv::putText(temp, "left", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
+                }
+                else { // ì¢Œìš° center
+
+                    //* ì •ë©´ ìº ì´ ë  ë•Œ
+                    if (posX < -5) { // up
+                        //cv::putText(temp, "center up", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
+                    }
+                    else if (posX > 7) { // down
+                        //cv::putText(temp, "center down", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
+                    }
+                    else {
+                        get_bear();
+                        check_point_out(faceStart, faceEnd);
+                        modulate_ratio(faceStart, faceEnd);
+                        get_sticker_RoI(temp);
+                        sticker_resizing();
+                        // cv::putText(temp, "center center", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
+
+                    }
+
+
+                }
+                
+                //cv::putText(temp, "E2", faceEnd, cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 255, 0));
+                printf("sticker_bear\n");
+            }
+            if (mosaic_OnNOff) {
+                printf("mosaic_OnNOff\n");
+                check_point_out(faceStart, faceEnd);
+                modulate_ratio(faceStart, faceEnd);
+                get_sticker_RoI(temp);
+
+                cv::resize(rect, mosaic_temp, cv::Size(rect.rows / mosaic_strength, rect.cols / mosaic_strength));
+                cv::resize(mosaic_temp, rect, cv::Size(rect.rows, rect.cols));
+            }
+
+
+            if (posY > 10) { // ì¢Œìš° right
                 cv::putText(temp, "right", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
             }
-            else if (posY < -10) { // ÁÂ¿ì left
+            else if (posY < -10) { // ì¢Œìš° left
                 cv::putText(temp, "left", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
             }
-            else { // ÁÂ¿ì center
-                /*
-                * Á¤¸é Ä·ÀÌ µÉ ¶§
+            else { // ì¢Œìš° center
+                
+                //* ì •ë©´ ìº ì´ ë  ë•Œ
                 if (posX < -5) { // up
                     cv::putText(temp, "center up", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
                 }
                 else if (posX > 7) { // down
                     cv::putText(temp, "center down", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
                 }
-                else {
+                else
                     cv::putText(temp, "center center", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
-                    }
-                */
+                /*
 
-                // ³» ÄÄÇ»ÅÍ Á¤¸éÄ· ¾È µÊ; ¤´ÀÎ°¡
+                // ë‚´ ì»´í“¨í„° ì •ë©´ìº  ì•ˆ ë¨; ã…„ì¸ê°€
                 if (posX < -15) { // up
                     cv::putText(temp, "center up", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
                 }
@@ -345,16 +362,17 @@ int main() {
                 else {
                     cv::putText(temp, "center center", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
                 }
+                */
             }
 
             //show angle result
-            outtext << "X: " << std::setprecision(3) << euler_angle.at<double>(0);//»óÇÏ pitch
+            outtext << "X: " << std::setprecision(3) << euler_angle.at<double>(0);//ìƒí•˜ pitch
             cv::putText(temp, outtext.str(), cv::Point(50, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(255, 0, 0));
             outtext.str("");
-            outtext << "Y: " << std::setprecision(3) << euler_angle.at<double>(1);//ÁÂ¿ì yaw
+            outtext << "Y: " << std::setprecision(3) << euler_angle.at<double>(1);//ì¢Œìš° yaw
             cv::putText(temp, outtext.str(), cv::Point(50, 60), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
             outtext.str("");
-            outtext << "Z: " << std::setprecision(3) << euler_angle.at<double>(2);//±â¿ï±â roll
+            outtext << "Z: " << std::setprecision(3) << euler_angle.at<double>(2);//ê¸°ìš¸ê¸° roll
             cv::putText(temp, outtext.str(), cv::Point(50, 80), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 255, 0));
             outtext.str("");
 
@@ -371,3 +389,212 @@ int main() {
 
     return 0;
 }
+
+void get_bear() { // ê°œë°œì - ì •ë„í›ˆ
+    img = cv::imread("./sticker/bear/bear_400.jpg");
+    mask = cv::imread("./sticker/bear/bear_mask_400.jpg", cv::IMREAD_GRAYSCALE);
+
+    if (img.empty()) {
+        cerr << "bear load failed!" << endl;
+        exit(0);
+    }
+    if (mask.empty()) {
+        cerr << "bear_mask load failed!" << endl;
+        exit(0);
+    }
+
+    sticker_start_X = 60;
+    sticker_start_Y = 60;
+
+    img_width = img.cols;
+    img_height = img.rows;
+
+    /*
+    resized_width = img_width;
+    resized_height = img_height;
+    */
+}
+
+void get_bear_Left() {
+    img = cv::imread("./sticker/bear/bear_Left.jpg");
+    mask = cv::imread("./sticker/bear/bear_Left_mask.jpg", cv::IMREAD_GRAYSCALE);
+
+    if (img.empty()) {
+        cerr << "bear load failed!" << endl;
+        exit(0);
+    }
+    if (mask.empty()) {
+        cerr << "bear_mask load failed!" << endl;
+        exit(0);
+    }
+
+    sticker_start_X = 60;
+    sticker_start_Y = 60;
+
+    img_width = img.cols;
+    img_height = img.rows;
+
+    /*
+    resized_width = img_width;
+    resized_height = img_height;
+    */
+}
+
+void get_bear_Right() {
+    img = cv::imread("./sticker/bear/bear_Right.jpg");
+    mask = cv::imread("./sticker/bear/bear_Right_mask.jpg", cv::IMREAD_GRAYSCALE);
+
+    if (img.empty()) {
+        cerr << "bear load failed!" << endl;
+        exit(0);
+    }
+    if (mask.empty()) {
+        cerr << "bear_mask load failed!" << endl;
+        exit(0);
+    }
+
+    sticker_start_X = 60;
+    sticker_start_Y = 60;
+
+    img_width = img.cols;
+    img_height = img.rows;
+
+    /*
+    resized_width = img_width;
+    resized_height = img_height;
+    */
+}
+
+
+void trackbar_sticking_bear(int pos, void* userdata) {
+    sticker_bear = pos;
+    cv::setTrackbarPos("mosaic", "filters", 0);
+}
+
+void trackbar_mosaicing(int pos, void* userdata) {
+    if (pos > 0) {
+        mosaic_OnNOff = 1;
+        mosaic_strength = pos;
+    }
+    else {
+        mosaic_OnNOff = 0;
+    }
+    cv::setTrackbarPos("bear", "filters", 0);
+}
+
+void get_mosaic_Roi(cv::Point faceStart, cv::Point faceEnd) {
+}
+
+// roië¥¼ ë§Œë“¤ ì¢Œí‘œê°€ ì˜ìƒ ë°–ìœ¼ë¡œ ë²—ì–´ë‚˜ë©´ ì•ˆìœ¼ë¡œ ì´ë™ì‹œí‚´
+void check_point_out(cv::Point faceStart, cv::Point faceEnd) {
+    if (faceStart.x <= 0) {
+        faceStart.x = 1;
+    }
+    if (faceStart.y <= 0) {
+        faceStart.y = 1;
+    }
+    if (faceEnd.x >= temp_width) {
+        faceEnd.x = temp_width - 1;
+    }
+    if (faceEnd.y >= temp_height) {
+        faceEnd.y = temp_height - 1;
+    }
+}
+
+// roiì˜ width, height ë¹„ìœ¨ì„ 1:1ë¡œ ë§ì¶¤
+void modulate_ratio(cv::Point faceStart, cv::Point faceEnd) {
+    // ë” ì‘ì€ ê¸¸ì´ë¥¼ roi ê¸¸ì´ë¡œ ì •í•¨
+    if (faceEnd.x < faceEnd.y) {
+        resized_width = faceEnd.x - faceStart.x;
+        resized_height = resized_width;
+    }
+    else {
+        resized_height = faceEnd.y - faceStart.y;
+        resized_width = resized_height;
+    }
+
+    printf("resized length : %d\n", resized_width);
+    printf("resized length : %d\n", resized_height);
+}
+
+void get_sticker_RoI(cv::Mat src) {
+    // 1. ê´€ì‹¬ì˜ì—­ ì¶”ì¶œ
+    rect = src(cv::Rect(faceStart.x, faceStart.y, resized_width, resized_height));
+
+    // í™•ì¸ìš©
+    cv::rectangle(src, cv::Rect(faceStart.x, faceStart.y, resized_width, resized_height), cv::Scalar(0, 255, 0), 1);
+
+    modulate_ratio(faceStart, faceEnd);
+}
+
+void sticker_resizing() {
+    // 2. ê´€ì‹¬ ì˜ì—­ì— ë§ëŠ” ì‚¬ì´ì¦ˆë¡œ ë§ˆìŠ¤í¬ ì‚¬ì´ì¦ˆ ë³€ê²½
+    cv::resize(img, img, cv::Size(resized_width, resized_height));
+    cv::resize(mask, mask, cv::Size(resized_width, resized_height));
+
+    // 3. ê´€ì‹¬ ì˜ì—­ì— ì´ë¯¸ì§€ ë³µì‚¬
+    img.copyTo(rect, mask);
+
+    // í™•ì¸ìš©
+    cv::imshow("rect", rect);
+    cv::imshow("img", img);
+}
+
+/*
+void modulate_roi(cv::Mat src, int facePosX, int facePosY) {   // ê°œë°œì - ì •ë„í›ˆ
+    check_W = facePosX + resized_height;
+    check_H = facePosY + resized_width;
+
+    if (check_W >= temp_width || check_H >= temp_height) { // width or heightê°€ ë²”ìœ„ë¥¼ ë²—ì–´ë‚  ë•Œ
+        // ë” ì‘ì€ ê¸¸ì´ë¡œ ì‚¬ì´ì¦ˆ ì¡°ì ˆ
+        if (check_W < check_H) {
+            // widthë¥¼ ì¡°ì ˆí•˜ê³  1:1 ë¹„ìœ¨ì„ ìœ ì§€
+            resized_width = temp_width - facePosX - 1;
+            resized_height = resized_width;
+        }
+        else {
+            // heightë¥¼ ì¡°ì ˆí•˜ê³  1:1 ë¹„ìœ¨ì„ ìœ ì§€
+            resized_height = temp_height - facePosY - 1;
+            resized_width = resized_height;
+        }
+    }
+    else { // ë²—ì–´ë‚˜ì§€ ì•Šì„ ë•Œ
+        // ì›ë³¸ ê¸¸ì´ë¡œ ë‹¤ì‹œ ë¹„êµ
+        check_W = facePosX + img_width;
+        check_H = facePosY + img_height;
+
+        if (check_W >= temp_width || check_H >= temp_height) {
+            if (check_W < check_H) {
+                resized_width = temp_width - facePosX - 1;
+                resized_height = resized_width;
+            }
+            else {
+                resized_height = temp_height - facePosY - 1;
+                resized_width = resized_height;
+            }
+        }       // ì›ë³¸ ê¸¸ì´ë¡œë„ ë²”ìœ„ë¥¼ ë²—ì–´ë‚˜ì§€ ì•Šì„ ë•Œ
+        else if (img_width != resized_width) { // resizeë¥¼ í–ˆìœ¼ë©´
+            // ì´ë¯¸ì§€ ë‹¤ì‹œ ì½ìŒ : í™”ì§ˆì„ ìœ ì§€í•˜ê¸° ìœ„í•´
+            if (sticker_bear) {
+                get_bear();
+            }
+        }
+    }
+
+    // 1. ê´€ì‹¬ì˜ì—­ ì¶”ì¶œ
+    rect = src(cv::Rect(facePosX, facePosY, resized_width, resized_height));
+
+    cv::rectangle(src, cv::Rect(facePosX, facePosY, resized_width, resized_height), cv::Scalar(0, 255, 0), 1);
+
+    // 2. ê´€ì‹¬ ì˜ì—­ì— ë§ëŠ” ì‚¬ì´ì¦ˆë¡œ ë§ˆìŠ¤í¬ ì‚¬ì´ì¦ˆ ë³€ê²½
+    cv::resize(img, img, cv::Size(resized_width, resized_height));
+    cv::resize(mask, mask, cv::Size(resized_width, resized_height));
+
+    // 3. ê´€ì‹¬ ì˜ì—­ì— ì´ë¯¸ì§€ ë³µì‚¬
+    img.copyTo(rect, mask);
+
+    // í™•ì¸ìš©
+    cv::imshow("rect", rect);
+    cv::imshow("img", img);
+}
+*/

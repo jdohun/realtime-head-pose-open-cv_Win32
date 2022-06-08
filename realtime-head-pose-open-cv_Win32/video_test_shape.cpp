@@ -11,7 +11,11 @@
 #include <dlib/image_processing.h>
 #include "pose_estimate.h"
 
-// #include <string> // 사각형 좌표 찾을 때 사용 했음 : 작성자 - 정도훈
+#define FaceCENTER  0
+#define FaceRIGHT   1
+#define FaceLEFT    2
+#define FaceUP      1
+#define FaceDOWN    2
 
 //Intrisics can be calculated using opencv sample code under opencv/sources/samples/cpp/tutorial_code/calib3d
 //Normally, you can also apprximate fx and fy by image width, cx by half image width, cy by half image height instead
@@ -22,14 +26,18 @@ double D[5] = { 7.0834633684407095e-002, 6.9140193737175351e-002, 0.0, 0.0, -1.3
 // 스티커 붙이기에 사용할 변수들
 // 스티커 원본, 마스크, 관심영역
 cv::Mat img;
-cv::Mat mask;
+cv::Mat mask_img;
+cv::Mat img_left;
+cv::Mat mask_left;
+cv::Mat img_right;
+cv::Mat mask_right;
 cv::Mat rect;
 
 cv::Mat mosaic_temp;
 
 // 스티커 원본 길이
-int img_width;
-int img_height;
+//int img_width;
+//int img_height;
 
 int sticker_start_X;
 int sticker_start_Y;
@@ -58,22 +66,32 @@ int check_H;
 int sticker_bear = 0;
 int mosaic_OnNOff = 0;
 
+// mosaic_strength
+int mosaic_strength = 1;
+
 // filter 적용 함수
 void trackbar_sticking_bear(int pos, void* userdata);
 void trackbar_mosaicing(int pos, void* userdata);
 
-void get_mosaic_Roi(cv::Point faceStart, cv::Point faceEnd);
-
 // 스티커 영역 이탈 확인용
 void check_point_out(cv::Point faceStart, cv::Point faceEnd); // 개발자 - 정도훈
+
 void modulate_ratio(cv::Point faceStart, cv::Point faceEnd);
-void get_sticker_RoI(cv::Mat src);
-void sticker_resizing();
+void get_RoI(cv::Mat* src);
+//void sticker_resizing(cv::Mat* src, cv::Mat* src_mask);
+void sticking(cv::Mat* src, cv::Mat* src_mask);
+
+void select_sticker_pose();
 
 void get_bear();  // 개발자 - 정도훈
+void get_bear_Right();
+void get_bear_Left();
 //void modulate_roi(cv::Mat src, cv::Point faceStart, cv::Point faceEnd);   // 개발자 - 정도훈
 //void modulate_roi(cv::Mat src, int facePosX, int facePosY);   // 개발자 - 정도훈
 
+int faceSide = 0;
+int faceUPDOWN = 0;
+int faceRole = 0;
 
 int main() {
     //open cam
@@ -89,7 +107,7 @@ int main() {
     // filter를 적용시킬 트랙바 전용 창 생성
     cv::namedWindow("filters");
     cv::createTrackbar("bear", "filters", 0, 1, trackbar_sticking_bear, (void*)0);
-    cv::createTrackbar("mosaic", "filters", 0, 1, trackbar_mosaicing, (void*)0);
+    cv::createTrackbar("mosaic", "filters", 0, 10, trackbar_mosaicing, (void*)0);
 
     //Load face detection and pose estimation models (dlib).
     dlib::frontal_face_detector detector = dlib::get_frontal_face_detector();
@@ -176,6 +194,7 @@ int main() {
                 cv::circle(temp, cv::Point(shape.part(i).x(), shape.part(i).y()), 2, cv::Scalar(0, 0, 255), -1);
             }
             */
+
             //fill in 2D ref points, annotations follow https://ibug.doc.ic.ac.uk/resources/300-W/
             image_pts.push_back(cv::Point2d(shape.part(17).x(), shape.part(17).y())); //#17 left brow left corner
             image_pts.push_back(cv::Point2d(shape.part(21).x(), shape.part(21).y())); //#21 left brow right corner
@@ -242,82 +261,98 @@ int main() {
             printf("casting(int) reprojectdst[0].y : %d\n\n", (int)reprojectdst[0].y);
             */
 
-
-            // 0. 관심영역 사이즈가 전체 사이즈를 벗어나지 않게 조정
-            // reprojectdst[0] 과 reprojectdst[1]의 중간지점 사용
-            // 소수점 아래 첫번째 자리에서 반올림했다고 가정하여 +1
-            // sticker가 얼굴에 맞도록 좌상단 모서리를 이동시킴
+            // 0. 관심영역의 시작점과 끝점을 구함
+                // reprojectdst[0] 과 reprojectdst[1]의 중간지점 사용
+                // 소수점 아래 첫번째 자리에서 반올림했다고 가정하여 +1
+                // sticker가 얼굴에 맞도록 좌상단 모서리를 이동시킴
             faceStart.x = ((int)reprojectdst[0].x + (int)reprojectdst[1].x) / 2 + 1 - sticker_start_X;
             faceStart.y = ((int)reprojectdst[0].y + (int)reprojectdst[0].y) / 2 + 1 - sticker_start_Y;
+                // reprojectdst[6] 과 reprojectdst[6]의 중간지점 사용
             faceEnd.x = ((int)reprojectdst[6].x + (int)reprojectdst[7].x) / 2;
             faceEnd.y = ((int)reprojectdst[6].y + (int)reprojectdst[7].y) / 2;
 
+            /*
             cout << "faceStart : " << faceStart << endl;
             cout << "faceStart.x : " << faceStart.x << endl;
             cout << "faceStart.y : " << faceStart.y << endl << endl;;
             cout << "faceEnd : " << faceEnd << endl;
             cout << "faceEnd.x : " << faceEnd.x << endl;
             cout << "faceEnd.y : " << faceEnd.y << endl << endl;;
+            */
 
             //cv::putText(temp, "S", cv::Point(facePosX, facePosY), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
             cv::putText(temp, "S", faceStart, cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 255, 0));
             cv::putText(temp, "E", faceEnd, cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 255, 0));
 
-
-            // 트랙바 적용
-            if (sticker_bear) {
-                // 스티커 붙이기 
-                //modulate_roi(temp, faceStart, faceEnd);
-                /*
-                */
-                get_bear();
-                check_point_out(faceStart, faceEnd);
-                modulate_ratio(faceStart, faceEnd);
-                get_sticker_RoI(temp);
-                sticker_resizing();
-                //cv::putText(temp, "E2", faceEnd, cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 255, 0));
-                printf("sticker_bear\n");
+            // 얼굴 좌우 확인
+            if (posY > 13) { // 좌우 right
+                faceSide = FaceRIGHT;
             }
-            if (mosaic_OnNOff) {
-                printf("mosaic_OnNOff\n");
-                check_point_out(faceStart, faceEnd);
-                modulate_ratio(faceStart, faceEnd);
-                get_sticker_RoI(temp);
-
-                cv::resize(rect, mosaic_temp, cv::Size(rect.rows / 8, rect.cols / 8));
-                cv::resize(mosaic_temp, rect, cv::Size(rect.rows, rect.cols));
-            }
-
-
-            if (posY > 10) { // 좌우 right
-                cv::putText(temp, "right", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
-            }
-            else if (posY < -10) { // 좌우 left
-                cv::putText(temp, "left", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
+            else if (posY < -13) { // 좌우 left
+                faceSide = FaceLEFT;
             }
             else { // 좌우 center
-                /*
-                * 정면 캠이 될 때
-                if (posX < -5) { // up
-                    cv::putText(temp, "center up", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
-                }
-                else if (posX > 7) { // down
-                    cv::putText(temp, "center down", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
-                }
-                else
-                    cv::putText(temp, "center center", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
-                */
+                faceSide = FaceCENTER;
+            }
 
-                // 내 컴퓨터 정면캠 안 됨; ㅄ인가
-                if (posX < -15) { // up
-                    cv::putText(temp, "center up", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
-                }
-                else if (posX > -10) { // down
-                    cv::putText(temp, "center down", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
-                }
-                else {
-                    cv::putText(temp, "center center", cv::Point(300, 40), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255));
-                }
+            // 얼굴 상하 확인
+            /*
+            * 정면 캠이 될 때
+            if (posX < -5) { // up
+                faceUPDOWN = FaceUP;
+            }
+            else if (posX > 7) { // down
+                faceUPDOWN = FaceDOWN;
+            }
+            else
+                faceUPDOWN = FaceCENTER;
+            */
+
+            // 내 컴퓨터 정면캠 안 됨; ㅄ인가
+            if (posX < -15) { // 좌우 center 상하 up
+                faceUPDOWN = FaceUP;
+            }
+            else if (posX > -10) { // 좌우 center 상하 down
+                faceUPDOWN = FaceDOWN;
+            }
+            else {
+                faceUPDOWN = FaceCENTER;
+            }
+
+            /* 트랙바 적용 */
+            if (sticker_bear) {
+                //printf("sticker_bear\n");
+                // 1.관심영역 사이즈가 전체 사이즈를 벗어나지 않게 조정
+                check_point_out(faceStart, faceEnd);
+                // 2. 관심영역의 사이즈를 1:1 비율로 조정
+                modulate_ratio(faceStart, faceEnd);
+                // 3. 관심영역 추출
+                get_RoI(&temp);
+
+                // 화질 개선을 위해 트랙바 함수 안에 두지 않고 무한 읽기를 함
+                get_bear();
+                get_bear_Left();
+                get_bear_Right();
+
+                // 얼굴 방향에 맞게 스티커를 붙힘
+                select_sticker_pose();
+
+                cv::imshow("img", img);
+                //cv::imshow("img_left", img_left);
+                //cv::imshow("img_right", img_right);
+            }
+            if (mosaic_OnNOff) {
+                //printf("mosaic_OnNOff\n");
+                    // 1.관심영역 사이즈가 전체 사이즈를 벗어나지 않게 조정
+                check_point_out(faceStart, faceEnd);
+                    // 2. 관심영역의 사이즈를 1:1 비율로 조정
+                modulate_ratio(faceStart, faceEnd);
+                    // 3. 관심영역 추출
+                get_RoI(&temp);
+
+                // 모자이크 조절
+                cv::resize(rect, mosaic_temp, cv::Size(rect.rows / mosaic_strength, rect.cols / mosaic_strength));
+                cv::resize(mosaic_temp, rect, cv::Size(rect.rows, rect.cols));
             }
 
             //show angle result
@@ -345,48 +380,31 @@ int main() {
     return 0;
 }
 
-void get_bear() { // 개발자 - 정도훈
-    img = cv::imread("./sticker/bear/bear_400.jpg");
-    mask = cv::imread("./sticker/bear/bear_mask_400.jpg", cv::IMREAD_GRAYSCALE);
-
-    if (img.empty()) {
-        cerr << "bear load failed!" << endl;
-        exit(0);
-    }
-    if (mask.empty()) {
-        cerr << "bear_mask load failed!" << endl;
-        exit(0);
-    }
-
-    sticker_start_X = 60;
-    sticker_start_Y = 60;
-
-    img_width = img.cols;
-    img_height = img.rows;
-
-    /*
-    resized_width = img_width;
-    resized_height = img_height;
-    */
-}
-
+/* 트랙바에 들어가는 함수들 */
 void trackbar_sticking_bear(int pos, void* userdata) {
+    printf("trackbar_sticking_bear\n");
+
     sticker_bear = pos;
-    cv::setTrackbarPos("mosaic", "filters", 0);
-
-
+    if (pos != 0) {
+        cv::setTrackbarPos("mosaic", "filters", 0);
+    }
 }
 
 void trackbar_mosaicing(int pos, void* userdata) {
+    printf("trackbar_mosaicing\n");
+
     mosaic_OnNOff = pos;
-    cv::setTrackbarPos("bear", "filters", 0);
+    mosaic_strength = pos;
+    if (pos != 0) {
+        cv::setTrackbarPos("bear", "filters", 0);
+    }
 }
 
-void get_mosaic_Roi(cv::Point faceStart, cv::Point faceEnd) {
-}
-
+/* 스티커를 적용하는데 필요한 함수들 */
 // roi를 만들 좌표가 영상 밖으로 벗어나면 안으로 이동시킴
 void check_point_out(cv::Point faceStart, cv::Point faceEnd) {
+    printf("check_point_out\n");
+
     if (faceStart.x <= 0) {
         faceStart.x = 1;
     }
@@ -403,6 +421,8 @@ void check_point_out(cv::Point faceStart, cv::Point faceEnd) {
 
 // roi의 width, height 비율을 1:1로 맞춤
 void modulate_ratio(cv::Point faceStart, cv::Point faceEnd) {
+    printf("modulate_ratio\n");
+
     // 더 작은 길이를 roi 길이로 정함
     if (faceEnd.x < faceEnd.y) {
         resized_width = faceEnd.x - faceStart.x;
@@ -413,28 +433,153 @@ void modulate_ratio(cv::Point faceStart, cv::Point faceEnd) {
         resized_width = resized_height;
     }
 
+    // 확인용
     printf("resized length : %d\n", resized_width);
-    printf("resized length : %d\n", resized_height);
+    printf("resized length : %d\n\n", resized_height);
 }
 
-void get_sticker_RoI(cv::Mat src) {
-    // 1. 관심영역 추출
-    rect = src(cv::Rect(faceStart.x, faceStart.y, resized_width, resized_height));
+void get_RoI(cv::Mat* src) {
+    printf("get_RoI\n");
+    
+    cv::Mat img = *src;
 
-    cv::rectangle(src, cv::Rect(faceStart.x, faceStart.y, resized_width, resized_height), cv::Scalar(0, 255, 0), 1);
-}
-
-void sticker_resizing() {
-    // 2. 관심 영역에 맞는 사이즈로 마스크 사이즈 변경
-    cv::resize(img, img, cv::Size(resized_width, resized_height));
-    cv::resize(mask, mask, cv::Size(resized_width, resized_height));
-
-    // 3. 관심 영역에 이미지 복사
-    img.copyTo(rect, mask);
+    // 관심영역 추출
+    rect = img(cv::Rect(faceStart.x, faceStart.y, resized_width, resized_height));
 
     // 확인용
-    cv::imshow("rect", rect);
-    cv::imshow("img", img);
+    cv::rectangle(img, cv::Rect(faceStart.x, faceStart.y, resized_width, resized_height), cv::Scalar(0, 255, 0), 1);
+
+    modulate_ratio(faceStart, faceEnd);
+}
+/*
+void sticker_resizing(cv::Mat* img, cv::Mat* img_mask) {
+    printf("sticker_resizing\n");
+    cv::Mat src = *img;
+    cv::Mat src_mask = *img_mask;
+
+    cv::resize(src, src, cv::Size(resized_width, resized_height));
+    cv::resize(src_mask, src_mask, cv::Size(resized_width, resized_height));
+}
+*/
+
+void sticking(cv::Mat* img, cv::Mat* img_mask) {
+    printf("sticking\n");
+    cv::Mat src = *img;
+    cv::Mat src_mask = *img_mask;
+    // 4. 스티커를 관심영역 사이즈에 맞게 조정
+    //sticker_resizing(&src, &src_mask);
+    cv::resize(src, src, cv::Size(resized_width, resized_height));
+    cv::resize(src_mask, src_mask, cv::Size(resized_width, resized_height));
+
+    //cv::imshow("src", src); // test
+    // 관심 영역에 이미지 붙여넣기
+    src.copyTo(rect, src_mask);
+    //cv::imshow("test", rect); // test
+}
+
+void select_sticker_pose() {
+    printf("select_sticker_pose\n");
+    // 위아래 확인을 먼저함
+    if (faceUPDOWN == FaceCENTER) { // 위아래 center
+        if (faceSide == FaceCENTER) { // 좌우 center
+            sticking(&img, &mask_img);
+        }
+        else if (faceSide == FaceLEFT) {    // 좌우 LEFT
+            sticking(&img_left, &mask_left);
+        }
+        else if (faceSide == FaceRIGHT) {   // 좌우 RIGHT
+            sticking(&img_right, &mask_right);
+        }
+    }
+    else if (faceUPDOWN == FaceUP) { // 위아래 UP
+        if (faceSide == FaceCENTER) { // 좌우 center
+            sticking(&img, &mask_img);
+        }
+        else if (faceSide == FaceLEFT) {    // 좌우 LEFT
+            sticking(&img_left, &mask_left);
+        }
+        else if (faceSide == FaceRIGHT) {   // 좌우 RIGHT
+            sticking(&img_right, &mask_right);
+        }
+    }
+    else if (faceUPDOWN == FaceDOWN) { // 위아래 DOWN
+        if (faceSide == FaceCENTER) { // 좌우 center
+            sticking(&img, &mask_img);
+        }
+        else if (faceSide == FaceLEFT) {    // 좌우 LEFT
+            sticking(&img_left, &mask_left);
+        }
+        else if (faceSide == FaceRIGHT) {   // 좌우 RIGHT
+            sticking(&img_right, &mask_right);
+        }
+    }
+}
+
+void get_bear() { // 개발자 - 정도훈
+    printf("get_bear\n");
+
+    img = cv::imread("./sticker/bear/bear_400.jpg");
+    mask_img = cv::imread("./sticker/bear/bear_400_mask.jpg", cv::IMREAD_GRAYSCALE);
+
+    if (img.empty()) {
+        cerr << "bear load failed!" << endl;
+        exit(0);
+    }
+    if (mask_img.empty()) {
+        cerr << "bear_mask load failed!" << endl;
+        exit(0);
+    }
+
+    sticker_start_X = 60;
+    sticker_start_Y = 60;
+
+    //img_width = img.cols;
+    //img_height = img.rows;
+}
+
+
+void get_bear_Left() {
+    printf("get_bear_Left\n");
+
+    img_left = cv::imread("./sticker/bear/bear_Left.jpg");
+    mask_left = cv::imread("./sticker/bear/bear_Left_mask.jpg", cv::IMREAD_GRAYSCALE);
+
+    if (img_left.empty()) {
+        cerr << "bear load failed!" << endl;
+        exit(0);
+    }
+    if (mask_left.empty()) {
+        cerr << "bear_mask load failed!" << endl;
+        exit(0);
+    }
+
+    sticker_start_X = 60;
+    sticker_start_Y = 60;
+
+    //img_width = img_left.cols;
+    //img_height = img_left.rows;
+}
+
+void get_bear_Right() {
+    printf("get_bear_Right\n");
+
+    img_right = cv::imread("./sticker/bear/bear_Right.jpg");
+    mask_right = cv::imread("./sticker/bear/bear_Right_mask.jpg", cv::IMREAD_GRAYSCALE);
+
+    if (img_right.empty()) {
+        cerr << "bear load failed!" << endl;
+        exit(0);
+    }
+    if (mask_right.empty()) {
+        cerr << "bear_mask load failed!" << endl;
+        exit(0);
+    }
+
+    sticker_start_X = 60;
+    sticker_start_Y = 60;
+
+    //img_width = img_right.cols;
+    //img_height = img_right.rows;
 }
 
 /*
