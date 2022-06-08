@@ -16,6 +16,8 @@
 #define FaceLEFT    2
 #define FaceUP      1
 #define FaceDOWN    2
+#define RollLEFT    1
+#define RollRIGHT   2
 
 //Intrisics can be calculated using opencv sample code under opencv/sources/samples/cpp/tutorial_code/calib3d
 //Normally, you can also apprximate fx and fy by image width, cx by half image width, cy by half image height instead
@@ -91,7 +93,7 @@ void get_bear_Left();
 
 int faceSide = 0;
 int faceUPDOWN = 0;
-int faceRole = 0;
+int faceRoll = 0;
 
 int main() {
     //open cam
@@ -285,10 +287,10 @@ int main() {
             cv::putText(temp, "E", faceEnd, cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 255, 0));
 
             // ¾ó±¼ ÁÂ¿ì È®ÀÎ
-            if (posY > 13) { // ÁÂ¿ì right
+            if (posY > 17) { // ÁÂ¿ì right
                 faceSide = FaceRIGHT;
             }
-            else if (posY < -13) { // ÁÂ¿ì left
+            else if (posY < -17) { // ÁÂ¿ì left
                 faceSide = FaceLEFT;
             }
             else { // ÁÂ¿ì center
@@ -317,6 +319,17 @@ int main() {
             }
             else {
                 faceUPDOWN = FaceCENTER;
+            }
+
+            // ¾ó±¼ ·Ñ È®ÀÎ
+            if (posZ < -20) {
+                faceRoll = RollLEFT;
+            }
+            else if (posZ > 20) {
+                faceRoll = RollRIGHT;
+            }
+            else {
+                faceRoll = FaceCENTER;
             }
 
             /* Æ®·¢¹Ù Àû¿ë */
