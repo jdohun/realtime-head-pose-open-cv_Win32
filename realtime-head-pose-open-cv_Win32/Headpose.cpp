@@ -526,8 +526,8 @@ void select_sticker_pose() {
 void get_bear() { // 개발자 - 정도훈
     printf("get_bear\n");
 
-    img = cv::imread("./sticker/bear.jpg");
-    mask_img = cv::imread("./sticker/bear_mask2.jpg", cv::IMREAD_GRAYSCALE);
+    img = cv::imread("./sticker/bear/bear.jpg");
+    mask_img = cv::imread("./sticker/bear/bear_mask2.jpg", cv::IMREAD_GRAYSCALE);
 
     if (img.empty()) {
         cerr << "bear load failed!" << endl;
@@ -549,8 +549,8 @@ void get_bear() { // 개발자 - 정도훈
 void get_bear_Left() {
     printf("get_bear_Left\n");
 
-    img_left = cv::imread("./sticker/bear_Left.jpg");
-    mask_left = cv::imread("./sticker/bear_Left_mask.jpg", cv::IMREAD_GRAYSCALE);
+    img_left = cv::imread("./sticker/bear/bear_Left.jpg");
+    mask_left = cv::imread("./sticker/bear/bear_Left_mask.jpg", cv::IMREAD_GRAYSCALE);
 
     if (img_left.empty()) {
         cerr << "bear load failed!" << endl;
@@ -571,8 +571,8 @@ void get_bear_Left() {
 void get_bear_Right() {
     printf("get_bear_Right\n");
 
-    img_right = cv::imread("./sticker/bear_Right.jpg");
-    mask_right = cv::imread("./sticker/bear_Right_mask.jpg", cv::IMREAD_GRAYSCALE);
+    img_right = cv::imread("./sticker/bear/bear_Right.jpg");
+    mask_right = cv::imread("./sticker/bear/bear_Right_mask.jpg", cv::IMREAD_GRAYSCALE);
 
     if (img_right.empty()) {
         cerr << "bear load failed!" << endl;
@@ -593,8 +593,8 @@ void get_bear_Right() {
 void get_bear_Up() {
     printf("get_bear_Up\n");
 
-    img_up = cv::imread("./sticker/bear_up.jpg");
-    mask_up = cv::imread("./sticker/bear_up_mask.jpg", cv::IMREAD_GRAYSCALE);
+    img_up = cv::imread("./sticker/bear/bear_up.jpg");
+    mask_up = cv::imread("./sticker/bear/bear_up_mask.jpg", cv::IMREAD_GRAYSCALE);
 
     if (img_up.empty()) {
         cerr << "bear load failed!" << endl;
@@ -615,8 +615,8 @@ void get_bear_Up() {
 void get_bear_Down() {
     printf("get_bear_Down\n");
 
-    img_down = cv::imread("./sticker/bear_down.jpg");
-    mask_down= cv::imread("./sticker/bear_down_mask.jpg", cv::IMREAD_GRAYSCALE);
+    img_down = cv::imread("./sticker/bear/bear_down.jpg");
+    mask_down= cv::imread("./sticker/bear/bear_down_mask.jpg", cv::IMREAD_GRAYSCALE);
 
     if (img_down.empty()) {
         cerr << "bear load failed!" << endl;

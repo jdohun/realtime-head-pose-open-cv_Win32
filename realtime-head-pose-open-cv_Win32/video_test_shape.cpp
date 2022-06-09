@@ -267,11 +267,33 @@ int main() {
                 // reprojectdst[0] 과 reprojectdst[1]의 중간지점 사용
                 // 소수점 아래 첫번째 자리에서 반올림했다고 가정하여 +1
                 // sticker가 얼굴에 맞도록 좌상단 모서리를 이동시킴
-            faceStart.x = ((int)reprojectdst[0].x + (int)reprojectdst[1].x) / 2 + 1 - sticker_start_X;
-            faceStart.y = ((int)reprojectdst[0].y + (int)reprojectdst[0].y) / 2 + 1 - sticker_start_Y;
+            if ((int)reprojectdst[0].x < 0) {
+                faceStart.x = ((int)reprojectdst[1].x) + 1 - sticker_start_X;
+            }
+            else {
+                faceStart.x = ((int)reprojectdst[0].x + (int)reprojectdst[1].x) / 2 + 1;
+            }
+            if ((int)reprojectdst[0].y < 0) {
+                faceStart.y = ((int)reprojectdst[1].y) + 1 - sticker_start_Y;
+            }
+            else {
+                faceStart.y = ((int)reprojectdst[0].y + (int)reprojectdst[0].y) / 2 + 1;
+            }
+
+            if((int)reprojectdst[7].x > temp_width){
+                faceEnd.x = ((int)reprojectdst[6].x + temp_width) / 2;
+            }
+            else {
+                faceEnd.x = ((int)reprojectdst[6].x + (int)reprojectdst[7].x) / 2;
+            }
+            if ((int)reprojectdst[7].y > temp_height) {
+                faceEnd.y = ((int)reprojectdst[6].y + temp_height) / 2;
+            }
+            else {
+                faceEnd.y = ((int)reprojectdst[6].y + (int)reprojectdst[7].y) / 2;
+            }
+
                 // reprojectdst[6] 과 reprojectdst[6]의 중간지점 사용
-            faceEnd.x = ((int)reprojectdst[6].x + (int)reprojectdst[7].x) / 2;
-            faceEnd.y = ((int)reprojectdst[6].y + (int)reprojectdst[7].y) / 2;
 
             /*
             cout << "faceStart : " << faceStart << endl;
